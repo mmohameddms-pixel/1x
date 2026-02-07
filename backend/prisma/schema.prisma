@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  AGENT
+  ADMIN
+}
+
+enum AgentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentProvider {
+  PAYMOB
+  VODAFONE
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(USER)
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agent              Agent?
+  transactions       Transaction[]
+  withdrawalRequests WithdrawalRequest[]
+  refreshTokens      RefreshToken[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Agent {
+  id        String      @id @default(uuid())
+  userId    String      @unique
+  phone     String
+  country   String
+  status    AgentStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Transaction {
+  id        String            @id @default(uuid())
+  userId    String
+  provider  PaymentProvider
+  type      TransactionType
+  amount    Float
+  status    TransactionStatus @default(PENDING)
+  reference String?
+  metadata  Json?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+  @@index([createdAt])
+}
+
+model WithdrawalRequest {
+  id        String           @id @default(uuid())
+  userId    String
+  amount    Float
+  method    String
+  phone     String?
+  status    WithdrawalStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
